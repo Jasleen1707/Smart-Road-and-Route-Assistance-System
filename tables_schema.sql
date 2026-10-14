@@ -38,6 +38,63 @@ mysql> SHOW TABLES;
 | road_diversions                 |
 +---------------------------------+
 4 rows in set (3.281 sec)
+mysql> DESC DETECTION;
++--------------+---------------+------+-----+-------------------+-------------------+
+| Field        | Type          | Null | Key | Default           | Extra             |
++--------------+---------------+------+-----+-------------------+-------------------+
+| DETECTION_ID | int           | NO   | PRI | NULL              | auto_increment    |
+| POTHOLE_ID   | int           | NO   | MUL | NULL              |                   |
+| CONFIDENCE   | decimal(5,4)  | YES  |     | NULL              |                   |
+| DETECTED_AT  | datetime      | YES  |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
+| LATITUDE     | decimal(10,7) | YES  |     | NULL              |                   |
+| LONGITUDE    | decimal(10,7) | YES  |     | NULL              |                   |
++--------------+---------------+------+-----+-------------------+-------------------+
+6 rows in set (4.742 sec)
+
+mysql> DESC FACILITIES;
++-------------+---------------+------+-----+---------+----------------+
+| Field       | Type          | Null | Key | Default | Extra          |
++-------------+---------------+------+-----+---------+----------------+
+| FACILITY_ID | int           | NO   | PRI | NULL    | auto_increment |
+| NAME        | varchar(20)   | NO   |     | NULL    |                |
+| TYPE        | varchar(20)   | NO   |     | NULL    |                |
+| LATITUDE    | decimal(10,7) | YES  |     | NULL    |                |
+| LONGITUDE   | decimal(10,7) | YES  |     | NULL    |                |
+| ADDRESS     | varchar(30)   | NO   |     | NULL    |                |
++-------------+---------------+------+-----+---------+----------------+
+6 rows in set (0.023 sec)
+
+mysql> DESC POTHOLES;
++----------------+---------------+------+-----+-------------------+-------------------+
+| Field          | Type          | Null | Key | Default           | Extra             |
++----------------+---------------+------+-----+-------------------+-------------------+
+| POTHOLE_ID     | int           | NO   | PRI | NULL              | auto_increment    |
+| LATITUDE       | decimal(10,7) | YES  |     | NULL              |                   |
+| LONGITUDE      | decimal(10,7) | YES  |     | NULL              |                   |
+| SEVERITY       | varchar(20)   | YES  |     | NULL              |                   |
+| FIRST_DETECTED | datetime      | YES  |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
+| LAST_DETECTED  | datetime      | YES  |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
+| STATUS         | varchar(20)   | YES  |     | ACTIVE            |                   |
+| road_name      | varchar(150)  | YES  |     | NULL              |                   |
+| data_source    | varchar(100)  | YES  |     | NULL              |                   |
+| verified_on    | date          | YES  |     | NULL              |                   |
++----------------+---------------+------+-----+-------------------+-------------------+
+10 rows in set (0.268 sec)
+
+mysql> DESC ROAD_DIVERSIONS;
++-------------------+---------------+------+-----+---------+----------------+
+| Field             | Type          | Null | Key | Default | Extra          |
++-------------------+---------------+------+-----+---------+----------------+
+| ROAD_DIVERSION_ID | int           | NO   | PRI | NULL    | auto_increment |
+| ROAD_NAME         | varchar(20)   | NO   |     | NULL    |                |
+| LATITUDE          | decimal(10,7) | YES  |     | NULL    |                |
+| LONGITUDE         | decimal(10,7) | YES  |     | NULL    |                |
+| REASON            | varchar(300)  | YES  |     | NULL    |                |
+| START_TIME        | datetime      | YES  |     | NULL    |                |
+| END_TIME          | datetime      | YES  |     | NULL    |                |
+| STATUS            | varchar(20)   | YES  |     | ACTIVE  |                |
++-------------------+---------------+------+-----+---------+----------------+
+8 rows in set (0.395 sec)
 
 mysql> SELECT * FROM DETECTION;
 +--------------+------------+------------+---------------------+----------+-----------+
