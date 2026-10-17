@@ -1,19 +1,27 @@
-from pathlib import Path
 from ultralytics import YOLO
+from pathlib import Path
 
-# Load our trained pothole detector
-model = YOLO("runs/detect/ai/models/pothole_detector/weights/best.pt")
+# Load the existing pretrained model
+model = YOLO("ai/models/best.pt")
 
-# Automatically choose the first test image
-image_path = next(Path("ai/dataset/test/images").glob("*.jpg"))
-
-print(f"Testing image: {image_path}")
-
-# Run pothole detection
-results = model.predict(
-    source=str(image_path),
-    save=True,
-    conf=0.25
+# Find a test image
+image_folder = Path("ai/dataset/BharatPotHole/test/images")
+image_path = next(
+    (p for p in image_folder.iterdir()
+     if p.suffix.lower() in [".jpg", ".jpeg", ".png"]),
+    None
 )
 
-print("Pothole detection completed!")
+if image_path is None:
+    print("No test images found.")
+else:
+    print(f"Testing image: {image_path}")
+
+    results = model.predict(
+        source=str(image_path),
+        save=True,
+        conf=0.25
+    )
+
+    print("Image test completed.")
+    print("Pothole detection test completed using best.pt.")

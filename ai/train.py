@@ -5,7 +5,7 @@ model = YOLO("ai/models/yolo11n.pt")
 
 # Train the model on the pothole dataset
 model.train(
-    data="ai/dataset/data.yaml",
+    data="ai/dataset/BharatPotHole/data.yaml",
     epochs=10,
     imgsz=640,
     batch=8,

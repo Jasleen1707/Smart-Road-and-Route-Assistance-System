@@ -1,0 +1,13 @@
+# Python environment and cache
+.venv/
+__pycache__/
+*.pyc
+
+# Dataset files
+ai/dataset/
+
+# YOLO model weights
+ai/models/*.pt
+
+# Training and detection outputs
+runs/
