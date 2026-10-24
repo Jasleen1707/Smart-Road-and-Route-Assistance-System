@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Road Assistance - GPS</title>
+</head>
+<body>
+
+    <h2>Smart Road Assistance</h2>
+    <p>Click below to obtain your current location.</p>
+
+    <button onclick="getLocation()">Get My Location</button>
+
+    <p id="output">Location not obtained yet.</p>
+
+    <script>
+        function getLocation() {
+            const output = document.getElementById("output");
+
+            if (!navigator.geolocation) {
+                output.innerText =
+                    "Geolocation is not supported by your browser.";
+                return;
+            }
+
+            output.innerText = "Fetching location...";
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    output.innerHTML =
+                        "Latitude: " + latitude +
+                        "<br>Longitude: " + longitude +
+                        "<br>Accuracy: " + accuracy + " metres";
+
+                    console.log("Latitude:", latitude);
+                    console.log("Longitude:", longitude);
+                },
+
+                function(error) {
+                    output.innerText =
+                        "Unable to get location: " + error.message;
+                },
+
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
+        }
+    </script>
+
+</body>
+</html>
