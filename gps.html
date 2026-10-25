@@ -1,58 +1,94 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Smart Road Assistance - GPS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Road Assistance GPS</title>
 </head>
 <body>
-
     <h2>Smart Road Assistance</h2>
-    <p>Click below to obtain your current location.</p>
-
-    <button onclick="getLocation()">Get My Location</button>
-
-    <p id="output">Location not obtained yet.</p>
+    <p id="status">Starting GPS tracking...</p>
+    <p id="coordinates">Waiting for location...</p>
+    <p id="accuracy"></p>
 
     <script>
-        function getLocation() {
-            const output = document.getElementById("output");
+        let lastSaved = "";
 
+        function startTracking() {
             if (!navigator.geolocation) {
-                output.innerText =
-                    "Geolocation is not supported by your browser.";
+                document.getElementById("status").textContent =
+                    "Geolocation is not supported by this browser.";
                 return;
             }
 
-            output.innerText = "Fetching location...";
+            document.getElementById("status").textContent =
+                "Requesting location permission...";
 
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
+            navigator.geolocation.watchPosition(
+                async function(position) {
                     const latitude = position.coords.latitude;
                     const longitude = position.coords.longitude;
                     const accuracy = position.coords.accuracy;
 
-                    output.innerHTML =
-                        "Latitude: " + latitude +
-                        "<br>Longitude: " + longitude +
-                        "<br>Accuracy: " + accuracy + " metres";
+                    document.getElementById("status").textContent =
+                        "GPS tracking active";
 
-                    console.log("Latitude:", latitude);
-                    console.log("Longitude:", longitude);
+                    document.getElementById("coordinates").textContent =
+                        "Latitude: " + latitude +
+                        " | Longitude: " + longitude;
+
+                    document.getElementById("accuracy").textContent =
+                        "Estimated accuracy: " +
+                        accuracy.toFixed(1) + " metres";
+
+                    // Avoid rewriting the file if coordinates haven't changed.
+                    const coordsKey = latitude + " " + longitude;
+                    if (coordsKey === lastSaved) return;
+
+                    try {
+                        const response = await fetch("/save-location", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                latitude: latitude,
+                                longitude: longitude
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error("HTTP " + response.status);
+                        }
+
+                        lastSaved = coordsKey;
+
+                        document.getElementById("status").textContent =
+                            "GPS tracking active — coordinates saved.";
+
+                    } catch (error) {
+                        document.getElementById("status").textContent =
+                            "Location found, but saving failed. Check server.py.";
+                        console.error(error);
+                    }
                 },
 
                 function(error) {
-                    output.innerText =
-                        "Unable to get location: " + error.message;
+                    document.getElementById("status").textContent =
+                        "GPS error: " + error.message;
                 },
 
                 {
                     enableHighAccuracy: true,
-                    timeout: 15000,
+                    timeout: 20000,
                     maximumAge: 0
                 }
             );
         }
-    </script>
 
+        // Start tracking automatically when the page loads.
+        window.addEventListener("load", startTracking);
+    </script>
 </body>
 </html>
