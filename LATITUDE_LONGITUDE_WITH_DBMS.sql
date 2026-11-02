@@ -28,8 +28,7 @@ mysql> SHOW DATABASES;
 +-----------------------+
 8 rows in set (2.894 sec)
 
-mysql> USE DATABASES;
-ERROR 1049 (42000): Unknown database 'databases'
+
 mysql> USE SMART_ROAD_ASSISTANCE;
 Database changed
 mysql> SHOW TABLES;
@@ -44,8 +43,7 @@ mysql> SHOW TABLES;
 +---------------------------------+
 5 rows in set (3.888 sec)
 
-mysql> SELECT * FROM DEETCTIONS;
-ERROR 1146 (42S02): Table 'smart_road_assistance.deetctions' doesn't exist
+
 mysql> SELECT  * FROM DEETCTIONS;
 ERROR 1146 (42S02): Table 'smart_road_assistance.deetctions' doesn't exist
 mysql> SELECT * FROM DETECTION;
@@ -120,8 +118,7 @@ mysql> SELECT * FROM GPS_LOCATIONS;
 +-------------+------------+-------------+---------------------+
 36 rows in set (1.239 sec)
 
-mysql> SELECT * FROM ROAD DIVERSIONS;
-ERROR 1146 (42S02): Table 'smart_road_assistance.road' doesn't exist
+
 mysql> SELECT * FROM ROAD_DIVERSIONS;
 +-------------------+--------------+------------+------------+---------------------+---------------------+---------------------+---------+
 | ROAD_DIVERSION_ID | ROAD_NAME    | LATITUDE   | LONGITUDE  | REASON              | START_TIME          | END_TIME            | STATUS  |
