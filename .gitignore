@@ -3,11 +3,16 @@
 __pycache__/
 *.pyc
 
-# Dataset files
+# Dataset files and backups
 ai/dataset/
+ai/BharatPotHole_backup/
+ai/custom_dataset/
+ai/Pothole detection.v1i.yolov11/
 
 # YOLO model weights
 ai/models/*.pt
+!ai/models/pothole_final.pt
 
 # Training and detection outputs
 runs/
+ai/public_training/
