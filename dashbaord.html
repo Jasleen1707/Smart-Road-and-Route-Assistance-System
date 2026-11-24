@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Road and Route Assistance</title>
+<style>
+:root {
+  --bg: #0b0f15;
+  --card: #131922;
+  --line: #222b38;
+  --tx: #f1f5f9;
+  --mut: #94a3b8;
+  --ok: #10b981;
+  --bad: #ef4444;
+  --acc: #3b82f6;
+  --warn: #f59e0b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  padding: 16px 22px;
+}
+header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+h1 { font-size: 19px; margin-right: auto; }
+.pill {
+  padding: 3px 11px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+.ok { color: var(--ok); border-color: var(--ok); }
+.bad { color: var(--bad); border-color: var(--bad); }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+@media(max-width: 850px) {
+  .grid { grid-template-columns: 1fr; }
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+h2 {
+  font-size: 12px;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.mut { color: var(--mut); font-size: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+button, select, input {
+  background: #1c2430;
+  color: var(--tx);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+}
+button { cursor: pointer; font-weight: 600; }
+button:hover { border-color: var(--acc); }
+button.on { background: var(--acc); border-color: var(--acc); }
+
+.stage {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.stage > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+canvas#radar {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #0b0f15;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.q {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.b {
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #000;
+  font-weight: 700;
+  font-size: 10px;
+  min-width: 72px;
+  text-align: center;
+}
+.p0 { background: var(--bad); color: #fff; }
+.p1 { background: var(--warn); color: #000; }
+.p2 { background: #fbbf24; color: #000; }
+.p3 { background: var(--acc); color: #fff; }
+
+.list { max-height: 220px; overflow: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+th, td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+th {
+  color: var(--mut);
+  font-size: 11px;
+  text-transform: uppercase;
+  background: #0d121a;
+  position: sticky;
+  top: 0;
+}
+tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 3px;
+  margin: 6px 0;
+}
+.slot-cell {
+  height: 16px;
+  border-radius: 3px;
+  background: #222b38;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-weight: 700;
+}
+.slot-cell.filled {
+  background: var(--acc);
+  color: #fff;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🚗 Smart Road and Route Assistance</h1>
+  <span id="pApi" class="pill bad">Backend</span>
+  <span id="pCam" class="pill bad">Camera: Laptop Webcam</span>
+  <span id="pGps" class="pill bad">GPS</span>
+  <span id="pAi" class="pill bad">AI (YOLO)</span>
+  <span id="pOs" class="pill ok">OS Core: Active</span>
+  <span id="pDb" class="pill bad">Database</span>
+</header>
+
+<!-- MAIN 2-COLUMN VIEW -->
+<div class="grid">
+  <!-- LEFT: Real Camera and YOLO AI -->
+  <div class="card">
+    <h2>Laptop Camera & AI (Real-Time YOLO)</h2>
+    <div class="stage">
+      <video id="vid" playsinline autoplay muted></video>
+      <img id="img" hidden>
+      <canvas id="ov"></canvas>
+    </div>
+    <div class="row">
+      <button id="bCam" style="background:var(--acc);color:#fff">Start Device Camera</button>
+      <label>Upload photo <input id="file" type="file" accept="image/*" hidden></label>
+      <button id="bAuto">Auto-detect: off</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Real-Time GPS & Proximity Radar -->
+  <div class="card">
+    <h2>GPS and Proximity Radar</h2>
+    <canvas id="radar" width="560" height="315"></canvas>
+    <div class="row">
+      <button id="bGps">Use device GPS</button>
+      <span class="mut" id="gpsStatus">Coordinates sync to location.txt & MySQL</span>
+    </div>
+    <div class="mut" id="posTxt">No position yet. Press "Use device GPS" to acquire location.</div>
+  </div>
+</div>
+
+<!-- OS MODULE CONCURRENCY ENGINE & DRIVER ALERTS -->
+<div class="grid">
+  <!-- LEFT: OS Concurrency Engine (Always Running from os_module.c) -->
+  <div class="card">
+    <h2>OS Kernel Concurrency Engine (os_module.c)</h2>
+    <div class="mut" id="oMode">POSIX Multi-Threading & Dijkstra Semaphores Active</div>
+    <div class="mut" style="line-height: 1.6;">
+      • <b>camera_thread</b>: <span id="oCam">0</span> frames in, <span id="oDone">0</span> processed by detector<br>
+      • <b>gps_thread</b>: <span id="oGps">no fix</span> (mutex-protected register)<br>
+      • <b>16-Slot Bounded Buffer</b>: sem_full = <b id="oFull" style="color:var(--ok)">0</b>, sem_empty = <b id="oEmpty" style="color:var(--mut)">16</b><br>
+      • <b>alert_thread</b>: consumer waiting on <code style="font-family:monospace;color:var(--acc)">sem_wait(&sem_full)</code>
+    </div>
+    <!-- 16 Dijkstra Semaphore Slots Visualizer -->
+    <div class="slots-grid" id="slots"></div>
+    <div class="mut" style="font-size: 11px;">
+      Total alerts delivered: <b id="tSent">0</b> | Average wait time: <b id="tWait">0 ms</b>
+    </div>
+  </div>
+
+  <!-- RIGHT: Driver Priority Scheduling Alert Feed -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2>Driver Alerts</h2>
+      <div class="row">
+        <span class="pill ok" style="font-size: 10px;">Algorithm: Priority Scheduling</span>
+        <label class="mut"><input type="checkbox" id="audio"> speak alerts</label>
+      </div>
+    </div>
+    <div id="queue" class="list" style="min-height: 55px;"></div>
+    <h2>Delivered Priority Log</h2>
+    <div id="alog" class="list" style="max-height: 110px;"></div>
+  </div>
+</div>
+
+<!-- BOTTOM: NEARBY SERVICES IN TABULAR FORMAT FROM MYSQL DATABASE -->
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+    <h2>🏪 Nearby Services & Emergency Facilities (from MySQL Database)</h2>
+    <div class="row">
+      <span class="mut" id="facCount">Loading services...</span>
+      <select id="facFilter">
+        <option value="ALL">All Categories</option>
+        <option value="Petrol Pump">⛽ Petrol Pumps</option>
+        <option value="Hospital">🏥 Hospitals</option>
+        <option value="Puncture Shop">🔧 Puncture Shops</option>
+        <option value="Restaurant">🍴 Restaurants</option>
+      </select>
+      <button id="bRefreshFac">🔄 Refresh from Database</button>
+    </div>
+  </div>
+  <div class="list" style="max-height: 260px; overflow-x: auto; margin-top: 4px;">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 45px;">ID</th>
+          <th>Service Name</th>
+          <th>Category</th>
+          <th>Address / Road</th>
+          <th>Latitude, Longitude</th>
+          <th>Distance from Vehicle</th>
+        </tr>
+      </thead>
+      <tbody id="facTableBody">
+        <tr><td colspan="6" class="mut" style="text-align:center; padding: 12px;">Loading facilities from MySQL database...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const API = (location.origin && location.origin.startsWith('http') && !location.port.includes('5500')) ? location.origin : 'http://127.0.0.1:8081';
+const PN = ['SAFETY', 'DIVERSION', 'POTHOLE', 'SERVICE'];
+
+let pos = null;
+const radius = 10000; // 10 km fixed scan radius
+let nearby = { p: [], f: [] }, allFacilities = [], seen = new Set();
+let auto = false, src = null, lastSave = 0, lastNear = 0, lastAl = 0, divs = [];
+const buf = [], CAP = 8;
+let dropped = 0, busy = false, nDet = 0, nNew = 0, nOld = 0, aq = [], cur = null, seq = 0, sv = { n: 0, w: 0 };
+
+const pill = (id, ok, t) => {
+  const e = $('#' + id);
+  if (e) {
+    e.className = 'pill ' + (ok ? 'ok' : 'bad');
+    e.textContent = t;
+  }
+};
+
+async function api(p, o) {
+  const r = await fetch(API + p, o);
+  if (!r.ok) throw new Error(p + ' ' + r.status);
+  return r.json();
+}
+
+const ping = () => api('/').then(() => pill('pApi', 1, 'Backend ok')).catch(() => pill('pApi', 0, 'Backend offline'));
+setInterval(ping, 4000);
+ping();
+
+// Build 16 Semaphore Buffer Slots
+const slotsContainer = $('#slots');
+for (let i = 0; i < 16; i++) {
+  const s = document.createElement('div');
+  s.className = 'slot-cell';
+  s.id = 'slot-' + i;
+  s.textContent = i + 1;
+  slotsContainer.appendChild(s);
+}
+
+function updateSlotUI(full, prio = 0) {
+  for (let i = 0; i < 16; i++) {
+    const el = document.getElementById('slot-' + i);
+    if (el) {
+      if (i < full) {
+        el.className = 'slot-cell filled';
+        el.style.background = (prio === 0) ? 'var(--bad)' : (prio === 1 ? 'var(--warn)' : 'var(--acc)');
+        el.style.color = '#fff';
+        el.textContent = (prio === 0) ? 'P3' : (prio === 1 ? 'P2' : 'P1');
+      } else {
+        el.className = 'slot-cell';
+        el.style.background = '#222b38';
+        el.style.color = '#64748b';
+        el.textContent = i + 1;
+      }
+    }
+  }
+}
+
+/* OS Concurrency Telemetry Poll (runs automatically in background) */
+async function pollOS() {
+  try {
+    const s = await api('/os/live');
+    pill('pOs', 1, 'OS Core: Active');
+    if (s.mode) $('#oMode').textContent = s.mode;
+    if (s.frames_in !== undefined) $('#oCam').textContent = s.frames_in;
+    if (s.frames_done !== undefined) $('#oDone').textContent = s.frames_done;
+    if (s.gps && s.gps.lat) {
+      $('#oGps').textContent = `${s.gps.lat.toFixed(5)}, ${s.gps.lon.toFixed(5)}`;
+    }
+    const backendFull = s.sem_full || 0;
+    const frontendFull = aq.length + (cur ? 1 : 0);
+    const active = Math.max(backendFull, frontendFull);
+    $('#oFull').textContent = active;
+    $('#oEmpty').textContent = 16 - active;
+    updateSlotUI(active, (cur ? cur.pri : 0));
+  } catch (e) {
+    const active = Math.min(16, aq.length + (cur ? 1 : 0));
+    $('#oFull').textContent = active;
+    $('#oEmpty').textContent = 16 - active;
+    updateSlotUI(active, (cur ? cur.pri : 0));
+  }
+}
+setInterval(pollOS, 400);
+pollOS();
+
+/* OS Priority Alert Scheduler with Aging (Starvation-Free, directly from os_module.c) */
+function pushAlert(pri, msg) {
+  const b = Math.min(200, 40 + 2 * msg.length);
+  aq.push({ pri, msg, arr: performance.now(), burst: b, rem: b, seq: ++seq });
+  const activeCount = Math.min(16, aq.length + (cur ? 1 : 0));
+  $('#oFull').textContent = activeCount;
+  $('#oEmpty').textContent = 16 - activeCount;
+  updateSlotUI(activeCount, pri);
+  drawQ();
+  if (!cur) next();
+}
+
+// Aging formula: eff = pri * 1000 - wait_time / 4
+const eff = a => a.pri * 1000 - (performance.now() - a.arr) / 4;
+
+function pick() {
+  let b = 0;
+  for (let i = 1; i < aq.length; i++) {
+    if (eff(aq[i]) < eff(aq[b])) b = i;
+  }
+  return b;
+}
+
+function next() {
+  if (!aq.length) {
+    cur = null;
+    drawQ();
+    updateSlotUI(0);
+    $('#oFull').textContent = 0;
+    $('#oEmpty').textContent = 16;
+    return;
+  }
+  const a = aq.splice(pick(), 1)[0];
+  cur = a;
+  const activeCount = Math.min(16, aq.length + 1);
+  $('#oFull').textContent = activeCount;
+  $('#oEmpty').textContent = 16 - activeCount;
+  updateSlotUI(activeCount, a.pri);
+  drawQ();
+
+  if ($('#audio').checked && window.speechSynthesis) {
+    speechSynthesis.speak(new SpeechSynthesisUtterance(a.msg));
+  }
+
+  // Display alert for 1.4s so user can clearly see slot illuminated and transition
+  setTimeout(() => {
+    const w = Math.round(performance.now() - a.arr - a.burst);
+    sv.n++;
+    sv.w += w;
+    $('#alog').insertAdjacentHTML('afterbegin', `<div class="q"><span class="b p${a.pri}">${PN[a.pri]}</span><span>${a.msg} <span class="mut">waited ${w} ms</span></span></div>`);
+    $('#tSent').textContent = sv.n;
+    $('#tWait').textContent = Math.round(sv.w / sv.n) + ' ms';
+    cur = null;
+    const remaining = Math.min(16, aq.length);
+    $('#oFull').textContent = remaining;
+    $('#oEmpty').textContent = 16 - remaining;
+    updateSlotUI(remaining);
+    next();
+  }, 1400);
+}
+
+function drawQ() {
+  $('#queue').innerHTML = (cur ? `<div class="q"><span class="b p${cur.pri}">${PN[cur.pri]}</span><b>now: ${cur.msg}</b></div>` : '') +
+    aq.map(a => `<div class="q"><span class="b p${a.pri}">${PN[a.pri]}</span><span>${a.msg}</span></div>`).join('') ||
+    '<span class="mut">No alerts waiting in queue</span>';
+}
+drawQ();
+
+/* Real Device GPS */
+function setPos(lat, lon, why) {
+  pos = { lat, lon };
+  pill('pGps', 1, 'GPS: Live');
+  $('#posTxt').textContent = `Latitude: ${lat.toFixed(6)}, Longitude: ${lon.toFixed(6)} (${why})`;
+
+  // Auto-populate road name box with live GPS coordinates if user hasn't typed custom name
+  const roadBox = $('#road');
+  if (roadBox && (!roadBox.value || roadBox.value.startsWith('GPS:') || roadBox.value.includes('Subhash Road'))) {
+    roadBox.value = `GPS: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  }
+
+  drawRadar();
+  const t = Date.now();
+  if (t - lastSave > 3000) {
+    lastSave = t;
+    api(`/gps/file?latitude=${lat}&longitude=${lon}`, { method: 'POST' }).catch(() => {});
+    api('/save-location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ latitude: lat, longitude: lon, source: why })
+    }).catch(() => {});
+  }
+  if (t - lastNear > 2000) {
+    lastNear = t;
+    refreshNearby();
+  }
+}
+
+$('#bGps').onclick = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      p => setPos(p.coords.latitude, p.coords.longitude, 'Device Sensor'),
+      () => pill('pGps', 0, 'GPS permission denied'),
+      { enableHighAccuracy: true }
+    );
+  } else {
+    pill('pGps', 0, 'No GPS hardware found');
+  }
+};
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    p => setPos(p.coords.latitude, p.coords.longitude, 'Device Sensor'),
+    () => {}
+  );
+}
+
+/* Haversine Distance Formula in Meters */
+function calcDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* Category Badge Renderer */
+function typeBadge(type) {
+  const t = (type || '').toLowerCase();
+  if (t.includes('petrol') || t.includes('fuel')) return '<span class="b" style="background:#3b82f6;color:#fff">⛽ Petrol</span>';
+  if (t.includes('hosp') || t.includes('trauma')) return '<span class="b" style="background:#ef4444;color:#fff">🏥 Hospital</span>';
+  if (t.includes('punct')) return '<span class="b" style="background:#f59e0b;color:#000">🔧 Puncture</span>';
+  if (t.includes('rest') || t.includes('food')) return '<span class="b" style="background:#10b981;color:#000">🍴 Food</span>';
+  return `<span class="b" style="background:#64748b;color:#fff">${type || 'Service'}</span>`;
+}
+
+/* Render Facilities Table at Bottom */
+function renderFacilitiesTable() {
+  const filter = $('#facFilter').value;
+  let items = allFacilities.slice();
+
+  if (pos) {
+    items.forEach(f => {
+      f.dist = calcDistance(pos.lat, pos.lon, Number(f.LATITUDE), Number(f.LONGITUDE));
+    });
+    items.sort((a, b) => a.dist - b.dist);
+  }
+
+  if (filter !== 'ALL') {
+    items = items.filter(f => (f.TYPE || '').toLowerCase().includes(filter.toLowerCase()));
+  }
+
+  $('#facCount').textContent = `${items.length} services loaded from MySQL`;
+
+  if (!items.length) {
+    $('#facTableBody').innerHTML = '<tr><td colspan="6" class="mut" style="text-align:center;padding:14px">No facilities match the selected filter.</td></tr>';
+    return;
+  }
+
+  $('#facTableBody').innerHTML = items.map(f => {
+    const distTxt = (f.dist !== undefined)
+      ? (f.dist >= 1000 ? `<b style="color:var(--ok)">${(f.dist/1000).toFixed(2)} km</b>` : `<b style="color:var(--ok)">${Math.round(f.dist)} m</b>`)
+      : '<span class="mut">Awaiting GPS fix</span>';
+    const coords = `${Number(f.LATITUDE).toFixed(4)}, ${Number(f.LONGITUDE).toFixed(4)}`;
+    return `<tr>
+      <td class="mut">#${f.FACILITY_ID}</td>
+      <td><b>${f.NAME}</b></td>
+      <td>${typeBadge(f.TYPE)}</td>
+      <td style="color:#cbd5e1">${f.ADDRESS}</td>
+      <td class="mut" style="font-family:monospace;font-size:11px">${coords}</td>
+      <td>${distTxt}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* Fetch Facilities from MySQL Database */
+async function loadFacilities() {
+  try {
+    const res = await api('/facilities');
+    allFacilities = res.facilities || [];
+    nearby.f = allFacilities;
+    pill('pDb', 1, 'Database ok');
+    renderFacilitiesTable();
+    drawRadar();
+  } catch(e) {
+    pill('pDb', 0, 'Database offline');
+    $('#facTableBody').innerHTML = `<tr><td colspan="6" class="bad" style="text-align:center;padding:12px">Could not load facilities: ${e.message}</td></tr>`;
+  }
+}
+loadFacilities();
+
+$('#facFilter').onchange = renderFacilitiesTable;
+$('#bRefreshFac').onclick = () => { loadFacilities(); if (pos) refreshNearby(); };
+
+/* Fetch Nearby Potholes & Facilities with active GPS */
+async function refreshNearby() {
+  if (!pos) return;
+  const q = `latitude=${pos.lat}&longitude=${pos.lon}&radius_m=${radius}`;
+  try {
+    const [p, f] = await Promise.all([
+      api('/nearby-potholes?' + q),
+      api('/nearby-facilities?' + q)
+    ]);
+    nearby = { p: p.potholes || [], f: f.facilities || [] };
+    if (f.facilities && f.facilities.length) {
+      allFacilities = f.facilities;
+    }
+    drawRadar();
+    renderFacilitiesTable();
+    pill('pDb', 1, 'Database ok');
+
+    // Trigger alerts for nearby facilities & known potholes
+    f.facilities.forEach(x => {
+      const k = 'f' + x.FACILITY_ID;
+      if (!seen.has(k)) {
+        seen.add(k);
+        pushAlert(3, `${x.NAME} (${x.TYPE}) ${Math.round(x.distance_m)} m away`);
+      }
+    });
+    p.potholes.forEach(x => {
+      const k = 'p' + x.POTHOLE_ID;
+      if (x.distance_m <= 200 && !seen.has(k)) {
+        seen.add(k);
+        pushAlert(x.SEVERITY == 'High' ? 0 : 2, `Known ${x.SEVERITY || ''} pothole ${Math.round(x.distance_m)} m ahead`);
+      }
+    });
+  } catch (e) {
+    pill('pDb', 0, 'Database offline');
+  }
+}
+
+api('/diversions').then(r => divs = r.diversions || []).catch(() => {});
+
+/* Radar Display */
+function drawRadar() {
+  const c = $('#radar'), g = c.getContext('2d'), W = c.width, H = c.height, R = H / 2 - 14, k = R / radius;
+  g.clearRect(0, 0, W, H);
+  g.strokeStyle = '#222b38';
+  g.fillStyle = '#94a3b8';
+  g.font = '11px sans-serif';
+
+  [.5, 1].forEach(r => {
+    g.beginPath();
+    g.arc(W / 2, H / 2, R * r, 0, 7);
+    g.stroke();
+    g.fillText((radius * r / 1000).toFixed(1) + ' km', W / 2 + 4, H / 2 - R * r + 11);
+  });
+
+  if (!pos) {
+    g.fillText('Waiting for GPS...', W / 2 - 45, H / 2);
+    return;
+  }
+
+  const xy = (la, lo) => [W / 2 + (lo - pos.lon) * 111320 * Math.cos(pos.lat * Math.PI / 180) * k, H / 2 - (la - pos.lat) * 110540 * k];
+
+  nearby.f.forEach(f => {
+    const [x, y] = xy(Number(f.LATITUDE), Number(f.LONGITUDE));
+    g.fillStyle = '#3b82f6';
+    g.fillRect(x - 4, y - 4, 8, 8);
+    g.fillStyle = '#cbd5e1';
+    g.fillText(f.NAME, x + 7, y + 4);
+  });
+
+  divs.forEach(v => {
+    const [x, y] = xy(+v.LATITUDE, +v.LONGITUDE);
+    g.fillStyle = '#f59e0b';
+    g.beginPath();
+    g.moveTo(x, y - 7);
+    g.lineTo(x + 7, y);
+    g.lineTo(x, y + 7);
+    g.lineTo(x - 7, y);
+    g.fill();
+    g.fillStyle = '#cbd5e1';
+    g.fillText(v.ROAD_NAME, x + 9, y + 4);
+  });
+
+  nearby.p.forEach(p => {
+    const [x, y] = xy(Number(p.LATITUDE), Number(p.LONGITUDE));
+    g.fillStyle = p.SEVERITY == 'High' ? '#ef4444' : p.SEVERITY == 'Medium' ? '#f59e0b' : '#10b981';
+    g.beginPath();
+    g.arc(x, y, 5, 0, 7);
+    g.fill();
+  });
+
+  // Vehicle center indicator
+  g.fillStyle = '#fff';
+  g.beginPath();
+  g.moveTo(W / 2, H / 2 - 9);
+  g.lineTo(W / 2 + 7, H / 2 + 7);
+  g.lineTo(W / 2 - 7, H / 2 + 7);
+  g.fill();
+}
+drawRadar();
+
+/* Built-in Laptop Device Camera & AI Pipeline */
+let lastPotholeAlertTime = 0;
+
+$('#bCam').onclick = async () => {
+  try {
+    // 1. Stop any currently running camera tracks
+    if (src && src.srcObject) {
+      src.srcObject.getTracks().forEach(t => t.stop());
+    }
+
+    let stream = null;
+
+    // 2. Query available devices to specifically target the built-in laptop camera
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter(d => d.kind === 'videoinput');
+
+      // Filter out Iriun, Droidcam, OBS, Virtual webcam software
+      const realDeviceCam = videoInputs.find(d => {
+        const l = (d.label || '').toLowerCase();
+        const isVirtual = l.includes('iriun') || l.includes('droid') || l.includes('obs') || l.includes('virtual');
+        const isBuiltIn = l.includes('integrated') || l.includes('internal') || l.includes('webcam') || l.includes('camera') || l.includes('front');
+        return !isVirtual && isBuiltIn;
+      }) || videoInputs.find(d => {
+        const l = (d.label || '').toLowerCase();
+        return !l.includes('iriun') && !l.includes('droid') && !l.includes('obs') && !l.includes('virtual');
+      });
+
+      if (realDeviceCam && realDeviceCam.deviceId) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: { exact: realDeviceCam.deviceId },
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          }
+        });
+      }
+    } catch (eEnum) {
+      console.warn('Direct device ID lookup skipped:', eEnum);
+    }
+
+    // 3. Fallback: Explicitly request user-facing physical laptop webcam
+    if (!stream) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+      } catch (eUser) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+    }
+
+    // 4. Double-check stream track label: If Windows still bound to Iriun, switch away!
+    const track = stream.getVideoTracks()[0];
+    const trackLabel = (track && track.label) ? track.label.toLowerCase() : '';
+
+    if (trackLabel.includes('iriun') || trackLabel.includes('droid')) {
+      const allDevs = await navigator.mediaDevices.enumerateDevices();
+      const nonIriun = allDevs.find(d => {
+        const l = (d.label || '').toLowerCase();
+        return d.kind === 'videoinput' && !l.includes('iriun') && !l.includes('droid') && !l.includes('obs');
+      });
+      if (nonIriun && nonIriun.deviceId) {
+        track.stop();
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: nonIriun.deviceId } }
+        });
+      }
+    }
+
+    $('#vid').srcObject = stream;
+    await $('#vid').play();
+    $('#img').hidden = true;
+    src = $('#vid');
+
+    const activeTrack = stream.getVideoTracks()[0];
+    const camName = (activeTrack && activeTrack.label) ? activeTrack.label : 'Laptop Webcam';
+    pill('pCam', 1, camName.substring(0, 22) + ' ON');
+
+    $('#bCam').textContent = 'Device Camera Streaming';
+    $('#bCam').classList.add('on');
+    if (!auto) setAuto(true);
+  } catch (e) {
+    pill('pCam', 0, 'Camera Error: ' + e.name);
+    alert('Camera error: ' + e.message + '\nPlease grant browser permissions at http://127.0.0.1:8081');
+  }
+};
+
+$('#file').onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const i = $('#img');
+  i.onload = () => {
+    src = i;
+    pill('pCam', 1, 'Photo Loaded');
+  };
+  i.src = URL.createObjectURL(f);
+  i.hidden = false;
+  $('#vid').pause();
+};
+
+function setAuto(v) {
+  auto = v;
+  $('#bAuto').textContent = 'Auto-detect: ' + (v ? 'ON' : 'OFF');
+  $('#bAuto').classList.toggle('on', v);
+}
+$('#bAuto').onclick = () => setAuto(!auto);
+
+function capture() {
+  return new Promise(r => {
+    if (!src) return r(null);
+    const w = src.videoWidth || src.naturalWidth, h = src.videoHeight || src.naturalHeight;
+    if (!w) return r(null);
+    const k = Math.min(1, 640 / w), c = document.createElement('canvas');
+    c.width = w * k;
+    c.height = h * k;
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    c.toBlob(r, 'image/jpeg', .85);
+  });
+}
+
+setInterval(async () => {
+  if (!auto || busy || !src) return;
+  busy = true;
+  try {
+    const b = await capture();
+    if (b) await detect(b);
+  } catch (e) {
+    pill('pAi', 0, 'AI error');
+  }
+  busy = false;
+}, 800);
+
+async function detect(b) {
+  const fd = new FormData();
+  fd.append('file', b, 'frame.jpg');
+  const r = await api('/ai/detect', { method: 'POST', body: fd });
+  pill('pAi', 1, 'AI (YOLO) Active');
+
+  const o = $('#ov'), g = o.getContext('2d');
+  o.width = r.width;
+  o.height = r.height;
+  g.lineWidth = 3;
+  g.font = '18px sans-serif';
+
+  if (r.detections && r.detections.length > 0) {
+    for (const d of r.detections) {
+      const c = d.severity == 'High' ? '#ef4444' : d.severity == 'Medium' ? '#f59e0b' : '#10b981';
+      g.strokeStyle = g.fillStyle = c;
+      const [x1, y1, x2, y2] = d.box;
+      g.strokeRect(x1, y1, x2 - x1, y2 - y1);
+      g.fillText(`${d.severity} ${Math.round(d.confidence * 100)}%`, x1, Math.max(18, y1 - 5));
+
+      if (d.confidence < .35) continue;
+      nDet++;
+      if ($('#aiStat')) $('#aiStat').textContent = `• ${nDet} hazard(s) detected`;
+
+      const lat = pos ? pos.lat : 30.316494;
+      const lon = pos ? pos.lon : 78.032191;
+      const roadBox = $('#road');
+      const road = (roadBox && roadBox.value.trim()) || (pos ? `GPS (${pos.lat.toFixed(5)}, ${pos.lon.toFixed(5)})` : 'Live Location');
+
+      // 1. ALWAYS DISPATCH ALERT TO OS SCHEDULER & DELIVERED LOG
+      const now = Date.now();
+      if (now - lastPotholeAlertTime > 1200) {
+        lastPotholeAlertTime = now;
+        const pri = (d.severity === 'High') ? 0 : 2; // 0 = PRIO_SAFETY (Red), 2 = PRIO_POTHOLE
+        pushAlert(pri, `⚠️ ${d.severity} Pothole detected at ${road} (${Math.round(d.confidence * 100)}%)`);
+        // Sync to backend OS core
+        api('/os/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prio: pri === 0 ? 4 : 2, label: `Pothole at ${road}`, lat, lon })
+        }).catch(() => {});
+      }
+
+      // 2. ALWAYS PERSIST DETECTION TO MYSQL DATABASE
+      api('/detect-pothole', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude: lat,
+          longitude: lon,
+          road_name: road,
+          severity: d.severity,
+          confidence: +d.confidence.toFixed(4)
+        })
+      }).then(s => {
+        const isNew = /new/i.test(s.message);
+        isNew ? nNew++ : nOld++;
+        if ($('#dbMsg')) $('#dbMsg').textContent = `MySQL Saved: #${s.pothole_id} (${isNew ? 'New' : 'Updated'})`;
+        pill('pDb', 1, 'Database ok');
+      }).catch(err => {
+        if ($('#dbMsg')) $('#dbMsg').textContent = `MySQL Log: ${err.message}`;
+      });
+    }
+  }
+  setTimeout(() => g.clearRect(0, 0, o.width, o.height), 1200);
+}
+</script>
+</body>
+</html>
